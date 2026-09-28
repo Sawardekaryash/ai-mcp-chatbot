@@ -1,12 +1,13 @@
-# Python
-backend/venv/
-__pycache__/
-*.py[cod]
-
-# Environment
 .env
 backend/.env
 
-# Node
+backend/venv/
+venv/
+
+__pycache__/
+*.pyc
+
+backend/chatbot.db
+
 node_modules/
 dist/

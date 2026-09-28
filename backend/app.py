@@ -1,10 +1,10 @@
 import os
-
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
 from routes.chat_routes import chat_bp
+from database.database import init_db
 
 
 load_dotenv()
@@ -13,10 +13,10 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
 
-    # Allow requests from the React frontend
     CORS(app)
 
-    # Register API routes
+    init_db()
+
     app.register_blueprint(chat_bp, url_prefix="/api/chat")
 
     @app.get("/api/health")
