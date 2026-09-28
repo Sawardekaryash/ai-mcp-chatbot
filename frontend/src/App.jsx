@@ -7,23 +7,7 @@ const SUGGESTIONS = [
   { label: "Help me write code", prompt: "Help me write some code" },
 ];
 
-function replyFor(userText) {
-  const text = userText.toLowerCase();
 
-  if (text.includes("help me with") || text.includes("what can you")) {
-    return "I can explain ideas, draft writing, and help you think through code. Tell me the task and the outcome you want, and I’ll start there.";
-  }
-
-  if (text.includes("artificial intelligence") || text.includes("explain ai")) {
-    return "AI is software that finds patterns and generates useful output from them — text, images, decisions, or code. The practical version is a model trained on examples, then asked to produce something new for a specific prompt.";
-  }
-
-  if (text.includes("code")) {
-    return "Share the language, what the code should do, and any constraints (framework, file, error). I’ll sketch a clean starting point you can paste and adapt.";
-  }
-
-  return "Got it. Give me a bit more context — goal, audience, and any constraints — and I’ll respond with a clear next step.";
-}
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -31,7 +15,7 @@ function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const threadRef = useRef(null);
-  const replyTimer = useRef(null);
+  
   const textareaRef = useRef(null);
 
   const hasUserMessages = messages.some((m) => m.role === "user");
@@ -43,11 +27,7 @@ function App() {
     node.scrollTop = node.scrollHeight;
   }, [messages, isTyping]);
 
-  useEffect(() => {
-    return () => {
-      if (replyTimer.current) clearTimeout(replyTimer.current);
-    };
-  }, []);
+
 
   useEffect(() => {
     if (!sidebarOpen) return undefined;
@@ -67,38 +47,71 @@ function App() {
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  const sendText = (raw) => {
-    const text = raw.trim();
-    if (!text || isTyping) return;
+  const sendText = async (raw) => {
+  const text = raw.trim();
 
-    setMessages((prev) => [...prev, { role: "user", text }]);
-    setInput("");
-    setIsTyping(true);
-    closeSidebar();
+  if (!text || isTyping) return;
 
-    requestAnimationFrame(() => {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
+  setMessages((prev) => [
+    ...prev,
+    { role: "user", text },
+  ]);
+
+  setInput("");
+  setIsTyping(true);
+  closeSidebar();
+
+  requestAnimationFrame(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  });
+
+  try {
+    const response = await fetch("http://localhost:5000/api/chat/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: text,
+      }),
     });
 
-    if (replyTimer.current) clearTimeout(replyTimer.current);
-    replyTimer.current = setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", text: replyFor(text) },
-      ]);
-      setIsTyping(false);
-    }, 750);
-  };
+    const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to get AI response");
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "bot",
+        text: data.response,
+      },
+    ]);
+  } catch (error) {
+    console.error("Chat API error:", error);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "bot",
+        text: "Sorry, I couldn't connect to the AI service. Please try again.",
+      },
+    ]);
+  } finally {
+    setIsTyping(false);
+  }
+};
   const sendMessage = (e) => {
     e.preventDefault();
     sendText(input);
   };
 
   const newChat = () => {
-    if (replyTimer.current) clearTimeout(replyTimer.current);
+    
     setMessages([]);
     setInput("");
     setIsTyping(false);
