@@ -2,18 +2,13 @@ from flask import Blueprint, jsonify, request
 
 from services.ai_service import generate_response
 from database.database import save_message, get_messages
+from services.mcp_service import get_chat_history
+
 
 chat_bp = Blueprint("chat", __name__)
 
 
 @chat_bp.post("/")
-@chat_bp.get("/history")
-def chat_history():
-    messages = get_messages()
-
-    return jsonify({
-        "messages": messages
-    }), 200
 def chat():
     data = request.get_json(silent=True) or {}
 
@@ -51,4 +46,35 @@ def chat():
 
         return jsonify({
             "error": "Failed to generate AI response"
+        }), 500
+
+
+@chat_bp.get("/history")
+def chat_history():
+    messages = get_messages()
+
+    return jsonify({
+        "messages": messages
+    }), 200
+
+
+@chat_bp.get("/mcp-history")
+def mcp_chat_history():
+    try:
+        result = get_chat_history()
+
+        if result.is_error:
+            return jsonify({
+                "error": "MCP tool failed"
+            }), 500
+
+        return jsonify({
+            "history": result.structured_content.get("result", "")
+        }), 200
+
+    except Exception as e:
+        print(f"MCP service error: {e}")
+
+        return jsonify({
+            "error": "Failed to retrieve chat history through MCP"
         }), 500
